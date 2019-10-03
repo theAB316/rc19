@@ -1,9 +1,10 @@
 import numpy as np
 import pandas as pd
-from sklearn.preprocessing import LabelEncoder 
 from nltk.corpus import stopwords
 from sklearn.decomposition import TruncatedSVD
 from sklearn.feature_extraction.text import TfidfVectorizer
+from sklearn import preprocessing
+from sklearn.preprocessing import LabelEncoder 
 
 
 def remove_stopwords(corpus):
@@ -21,6 +22,10 @@ def create_tfidf(app_titles):
     vectors = vectorizer.fit_transform(app_titles)
     return vectors
 
+def encode(data, feature):
+    le = preprocessing.LabelEncoder()
+    le.fit(list(data[feature].values))
+    data[feature] = le.transform(list(data[feature]))
 
 
 data = pd.read_csv('googleplaystore.csv')
@@ -29,7 +34,26 @@ print(list(data.columns))
 
 vectors = create_tfidf(data['App'])
 svd = TruncatedSVD(n_components = 300)
-svd = svd.fit_transform(vectors)    #ndarray
+vectors = svd.fit_transform(vectors)    #ndarray
+
+data.drop(['App', 'Last Updated', 'Current Ver', 'Android Ver'], axis=1, inplace=True)
+
+# for i in range(0, len()):
+#     data[' = row[:-1]
+
+
+for row in ['Category', 'Type', 'Content Rating', 'Genres']:
+    #print(row)
+    encode(data, row)
+
+
+
+for index, row in data.iterrows():
+    print(list(row))
+    break
+    #vectors.append(list(row))
+
+
 
 
 
