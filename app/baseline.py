@@ -1,5 +1,6 @@
 import pickle
 import numpy as np
+import pandas as pd
 from sklearn.metrics.pairwise import cosine_similarity
 
 
@@ -14,17 +15,19 @@ def construct_sim_matrix(vectors):
 
 if __name__ == '__main__':
 	pickle_in = open("vectors.pickle","rb")
-	vectors = pickle.load(pickle_in)
+	app_titles, vectors = pickle.load(pickle_in)
 
 	matrix = construct_sim_matrix(vectors)
 
+	data = pd.read_csv('googleplaystore.csv')
+
 	selected_item = int(input("Enter a number from 0 to "+ str(len(vectors)) + " \n"))
+	print(data.iloc[selected_item])
 	max_val = max(matrix[selected_item])
 	i, = np.where(matrix[selected_item] == max_val) # i return list
-	print(i)
-	rec_item = vectors[i[0]]
-	print(len(rec_item))
-	print(matrix)
+	rec_item = i[0]
+	print(data.iloc[rec_item])
+	
 
 	
 

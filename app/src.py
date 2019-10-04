@@ -6,7 +6,7 @@ from sklearn.decomposition import TruncatedSVD
 from sklearn.feature_extraction.text import TfidfVectorizer
 from sklearn import preprocessing
 from sklearn.preprocessing import LabelEncoder 
-
+from sklearn.preprocessing import normalize
 
 def remove_stopwords(corpus):
     corpus_f = []
@@ -36,6 +36,7 @@ def remove_plus(t):
 
 data = pd.read_csv('googleplaystore.csv')
 data.fillna(0, inplace = True)
+app_titles = list(data['App'])
 #print(data.shape)
 
 vectors = create_tfidf(data['App'])
@@ -48,6 +49,7 @@ data.drop(['App', 'Last Updated', 'Current Ver', 'Android Ver'], axis=1, inplace
 
 
 print(list(data.columns))
+
 
 for i in range(0, len(data['Installs'])):
     data['Installs'][i] = data['Installs'][i].replace(',', '')
@@ -72,15 +74,19 @@ for i in range(0, len(data['Price'])):
 for row in ['Category', 'Type', 'Content Rating', 'Genres']:
     encode(data, row)
 
-for index, row in data.iterrows():
-    vectors[index].extend(list(row))
+# for index, row in data.iterrows():
+#     vectors[index].extend(list(row))
 
 print(True in np.isnan(np.asarray(vectors)))
+
+print(vectors[0])
+vectors = normalize(vectors)
+print(vectors[0])
 print(len(vectors), len(vectors[0]))
 
 
 pickle_out = open('vectors.pickle', 'wb')
-pickle.dump(vectors, pickle_out)
+pickle.dump((app_titles, vectors), pickle_out)
 pickle_out.close()
 
 
