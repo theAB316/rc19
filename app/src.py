@@ -27,31 +27,54 @@ def encode(data, feature):
     le.fit(list(data[feature].values))
     data[feature] = le.transform(list(data[feature]))
 
+def remove_plus(t):
+    t = t[:-1]
+    #print(t)
+    return t
+
 
 data = pd.read_csv('googleplaystore.csv')
-print(list(data.columns))
 #print(data.shape)
 
 vectors = create_tfidf(data['App'])
 svd = TruncatedSVD(n_components = 300)
 vectors = svd.fit_transform(vectors)    #ndarray
+vectors = vectors.tolist()
+
 
 data.drop(['App', 'Last Updated', 'Current Ver', 'Android Ver'], axis=1, inplace=True)
+print(list(data.columns))
 
-# for i in range(0, len()):
-#     data[' = row[:-1]
+for i in range(0, len(data['Installs'])):
+    data['Installs'][i] = data['Installs'][i].replace(',', '')
+    data['Installs'][i] = int(data['Installs'][i].replace('+', ''))
 
+for i in range(0, len(data['Size'])):
+    if data['Size'][i][-1] == 'k':
+        data['Size'][i] = float(data['Size'][i].replace('k', ''))
+
+    elif data['Size'][i][-1] == 'M':
+        data['Size'][i] = data['Size'][i].replace('M', '')
+        data['Size'][i] = float(data['Size'][i])*1000.0
+
+    else:
+        data['Size'][i] = float(data['Size'][i].replace('Varies with device', '18152'))
+
+for i in range(0, len(data['Price'])):
+    data['Price'][i] = float(data['Price'][i].replace('$', ''))
+
+    
 
 for row in ['Category', 'Type', 'Content Rating', 'Genres']:
-    #print(row)
     encode(data, row)
 
-
-
+print(vectors.shape)
 for index, row in data.iterrows():
-    print(list(row))
-    break
-    #vectors.append(list(row))
+    vectors[index].extend(list(row))
+print(vectors.shape)
+
+
+
 
 
 
