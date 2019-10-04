@@ -75,8 +75,7 @@ for row in ['Category', 'Type', 'Content Rating', 'Genres']:
 for index, row in data.iterrows():
     vectors[index].extend(list(row))
 
-print(True in np.isnan(vectors.asarray()))
-exit()
+print(True in np.isnan(np.asarray(vectors)))
 print(len(vectors), len(vectors[0]))
 
 
