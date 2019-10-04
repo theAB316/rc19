@@ -35,6 +35,7 @@ def remove_plus(t):
 
 
 data = pd.read_csv('googleplaystore.csv')
+data.fillna(0, inplace = True)
 #print(data.shape)
 
 vectors = create_tfidf(data['App'])
@@ -44,6 +45,8 @@ vectors = vectors.tolist()
 
 
 data.drop(['App', 'Last Updated', 'Current Ver', 'Android Ver'], axis=1, inplace=True)
+
+
 print(list(data.columns))
 
 for i in range(0, len(data['Installs'])):
@@ -72,7 +75,8 @@ for row in ['Category', 'Type', 'Content Rating', 'Genres']:
 for index, row in data.iterrows():
     vectors[index].extend(list(row))
 
-
+print(True in np.isnan(vectors.asarray()))
+exit()
 print(len(vectors), len(vectors[0]))
 
 
