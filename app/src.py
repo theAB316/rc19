@@ -1,5 +1,6 @@
 import numpy as np
 import pandas as pd
+import pickle
 from nltk.corpus import stopwords
 from sklearn.decomposition import TruncatedSVD
 from sklearn.feature_extraction.text import TfidfVectorizer
@@ -68,13 +69,16 @@ for i in range(0, len(data['Price'])):
 for row in ['Category', 'Type', 'Content Rating', 'Genres']:
     encode(data, row)
 
-print(vectors.shape)
 for index, row in data.iterrows():
     vectors[index].extend(list(row))
-print(vectors.shape)
 
 
+print(len(vectors), len(vectors[0]))
 
+
+pickle_out = open('vectors.pickle', 'wb')
+pickle.dump(vectors, pickle_out)
+pickle_out.close()
 
 
 
