@@ -1,3 +1,25 @@
+data1 = pd.read_csv('googleplaystore.csv')
+print(len(set(data1['App'])))
+
+#this gives 9659, but user_reviews.csv gives 64295
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 from sklearn.feature_extraction.text import TfidfVectorizer
 from nltk.tokenize import word_tokenize
 from gensim.models.doc2vec import Doc2Vec, TaggedDocument
