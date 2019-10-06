@@ -1,3 +1,5 @@
+#we stopped working on app
+
 data1 = pd.read_csv('googleplaystore.csv')
 print(len(set(data1['App'])))
 
