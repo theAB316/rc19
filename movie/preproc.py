@@ -32,7 +32,6 @@ def createUserItemPair(data, n_users, n_items):
 	data = data.loc[data['userId'].isin(mru_keys) & data['itemId'].isin(mrm_keys)]
 	data = data.pivot(index='userId', columns='itemId', values='rating')
 	#print(data.head())
-
 	return data	
 
 
