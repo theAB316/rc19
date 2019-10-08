@@ -1,0 +1,9 @@
+one episode could be one recommendation
+or spanning k no. of recommendations
+
+actions - what app agent recommended
+rewards - (-1, +1), (0, +1), (-1, 0) 
+	- whether user liked the recommendation or not
+
+state - could be the set of apps remaining
+	- hence our problem becomes a deterministic one
