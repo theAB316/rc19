@@ -27,8 +27,6 @@ if __name__ == '__main__':
 	i, = np.where(matrix[selected_item] == max_val) # i return list
 	rec_item = i[0]
 	print(data.iloc[rec_item])
-
-
 	
 
 	
