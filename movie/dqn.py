@@ -2,6 +2,7 @@ import numpy as np
 import pandas as pd
 import pickle
 import random
+import collections 
 
 from nltk.corpus import stopwords
 from sklearn.decomposition import TruncatedSVD
@@ -17,9 +18,11 @@ from keras import backend as K
 
 batch_size = 256
 gamma = 0.999
+
 eps_start = 1
 eps_end = 0.01
 eps_decay = 0.001
+
 target_update = 10
 memory_size = 100000
 lr = 0.001
@@ -28,9 +31,9 @@ num_episodes = 1000
 
 svd_vector_dim = 300       ## vector dim for svd
 state_stack_size = 4       ## this is the no. of consecutive movie vectors used for state 
-output_dim = 20           ## this needs to be changed later???
+output_dim = 53           ## this needs to be changed later???
 
-
+movies_watched = dict()
 
 class Item():
     ## item object is 3-tuple
@@ -38,6 +41,22 @@ class Item():
         self.id = id
         self.vector = vector
         self.rating = rating
+
+class Memory():
+    def __init__(self):
+        self.size = 0
+        self.memory = collections.deque([])
+
+    def push(self, experience):
+        global memory_size
+
+        if self.size >= memory_size:
+            self.memory.popleft()
+            self.memory.append(experience)
+        else:
+            self.memory.append(experience)
+            self.size += 1
+
 
 def preproc(path):
     ## creates a new column in data_m - title_genre that has a concatenation of title & genre
@@ -69,6 +88,7 @@ def create_item_vectors(data_r, vectors):
     ## currently only for 1st user
 
     item_ids = list(data_r.loc[data_r['userId'] == 0]['itemId']) #selecting first user's item ids
+
     ratings = list(data_r.loc[data_r['userId'] == 0]['rating']) #selecting first user's ratings
     
     items = []
@@ -81,6 +101,13 @@ def create_item_vectors(data_r, vectors):
 
     return items
 
+def create_hash(items):
+    global movies_watched
+    for item in items:
+        movies_watched[item.id] = False
+
+    return 1
+    
 
 
 def DQN(input_dim, output_dim, action=None):
@@ -92,7 +119,7 @@ def DQN(input_dim, output_dim, action=None):
     model.add(Dense(32, activation='tanh'))
     model.add(Dense(output_dim, activation='softmax'))
 
-    model.compile(loss='binary_crossentropy', optimizer='adam', metrics=['accuracy'])
+    model.compile(loss='mse', optimizer='adam', metrics=['accuracy'])
     ## action - a
     return model
 
@@ -100,23 +127,45 @@ def DQN(input_dim, output_dim, action=None):
 def get_initial_state(items):
     ## concatenates the first k(=state_stack_size) movie vectors. which is the initial state
 
-    state = np.array([])
+    state = []
     for item in items[:state_stack_size]:
-        state = np.concatenate([state, item.vector])
+        state.extend(item.vector)
 
     # now we remove those movies from the item_vector list so that it isnt going to be recommended again
     # here we are deleting from the original item_vectors; bcuz in python references are passed 
-    del items[:state_stack_size]
+    #del items[:state_stack_size]
 
     return state
 
 def select_action(state, policy_net, items):
+    global movies_watched
+
     rate = eps_start    #this needs to be changed; decay needs to be added in!!!
 
     if random.random() > rate:
         #get action from q table/network
+        action = np.argmax(policy_net.predict(state))     # here predict is used to get action
     else:
-        return random.randrange(0, len(items))
+        action = random.randrange(0, len(items))
+
+    movies_watched[items[action].id] = True     # sets hash table value to True for that particular movie
+    return action
+
+
+def get_reward(action, items):
+    if movies_watched[items[action].id] == True:
+        reward = 0                  #reward should be 0 so that movies arent repeated
+    else:   
+        reward = items[action].rating
+    
+    return reward
+
+def get_state(state, action, items):
+    #state = list(state)
+    state = state[svd_vector_dim: ]
+    state.extend(items[action].vector)
+
+    return state
 
     
 
@@ -126,25 +175,51 @@ def main():
     data_m, data_r = preproc(path)
     vectors = create_tfidf_svd(data_m['title_genre'], svd_vector_dim) 
     items = create_item_vectors(data_r, vectors)
-    print("len of items: ", len(items))
 
-
-
+    create_hash(items)
     
     policy_net = DQN(input_dim=state_stack_size*svd_vector_dim, output_dim=output_dim)
     target_net = DQN(input_dim=state_stack_size*svd_vector_dim, output_dim=output_dim)
 
 
-
+    memory = Memory()
     for episode in range(1):#num_episodes):
         state = get_initial_state(items)     ## this should get the initial state for each episode
 
-        timesteps = len(items)
-        for timestep in range(timesteps):
-            action = select_action(state, policy_net)
-            reward = take_action(action)
-            next_state = get_state()
+        #timesteps = len(items)
+        timesteps = 53
+        for count, timestep in enumerate(range(timesteps)):
+            action = select_action(state, policy_net, items)
+            reward = get_reward(action, items)
+            next_state = get_state(state, action, items)       # passing old state
             memory.push((state, action, next_state, reward))
+
+            predict_states = np.asarray([state])
+            predict_next_states = np.asarray([next_state])
+            current_q_vector = policy_net.predict(predict_states)
+            future_q_vector = target_net.predict(predict_next_states)
+
+            print(current_q_vector.shape)
+
+            max_future_q = np.max(future_q_vector)
+            new_q = reward + gamma * max_future_q       # q-learning update rule
+
+            current_q_vector[0, action] = new_q
+
+            X = predict_states
+            y = current_q_vector
+
+            policy_net.fit(X, y, verbose=1)
+            if count%10:
+                target_net.fit(X, y, verbose=1)
+
+            state = next_state
+
+
+            
+
+
+
         
 
 
