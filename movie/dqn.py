@@ -57,6 +57,12 @@ class Memory():
             self.memory.append(experience)
             self.size += 1
 
+    def sample(self, batch_size):
+        batch = random.sample(list(self.memory), batch_size))
+        return batch
+
+
+
 
 def preproc(path):
     ## creates a new column in data_m - title_genre that has a concatenation of title & genre
@@ -199,7 +205,13 @@ def main():
             current_q_vector = policy_net.predict(predict_states)
             future_q_vector = target_net.predict(predict_next_states)
 
-            print(current_q_vector.shape)
+
+            if memory.size > batch_size:
+                state, action, next_state, reward = memory.sample(batch_size)
+                
+
+                
+
 
             max_future_q = np.max(future_q_vector)
             new_q = reward + gamma * max_future_q       # q-learning update rule
@@ -214,6 +226,19 @@ def main():
                 target_net.fit(X, y, verbose=1)
 
             state = next_state
+
+
+
+
+    # s = []
+    # for i in range(4):
+    #     s.extend(list(items[i].vector))
+    # for i in range(4, len(items)):
+    #     predict_s = np.asarray([s]) 
+    #     output = target_net.predict(predict_s)
+    #     s = s[svd_vector_dim:] + list(items[i].vector)
+
+    #     print(output)
 
 
             
