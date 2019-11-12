@@ -16,7 +16,7 @@ from keras.layers import Dense
 from keras import backend as K
 
 
-batch_size = 256
+batch_size = 10
 gamma = 0.999
 
 eps_start = 1
@@ -58,7 +58,7 @@ class Memory():
             self.size += 1
 
     def sample(self, batch_size):
-        batch = random.sample(list(self.memory), batch_size))
+        batch = random.sample(list(self.memory), batch_size)
         return batch
 
 
@@ -190,42 +190,54 @@ def main():
 
     memory = Memory()
     for episode in range(1):#num_episodes):
+        #reset
         state = get_initial_state(items)     ## this should get the initial state for each episode
 
         #timesteps = len(items)
         timesteps = 53
         for count, timestep in enumerate(range(timesteps)):
-            action = select_action(state, policy_net, items)
+            action = select_action(state, policy_net, items)    #action is a number, indicating which movie id is selected
             reward = get_reward(action, items)
             next_state = get_state(state, action, items)       # passing old state
             memory.push((state, action, next_state, reward))
 
-            predict_states = np.asarray([state])
-            predict_next_states = np.asarray([next_state])
-            current_q_vector = policy_net.predict(predict_states)
-            future_q_vector = target_net.predict(predict_next_states)
-
-
+            
+            
+            X = []
+            y = []
             if memory.size > batch_size:
-                state, action, next_state, reward = memory.sample(batch_size)
-                
+                batch = memory.sample(batch_size)       # list of (s,a,n,r) 
 
-                
+                for i, _ in enumerate(batch):
+                    state, action, next_state, reward = batch[i]
+
+                    states = np.asarray([state])                # for syntax purposes (of fit method)
+                    next_states = np.asarray([next_state])
+
+                    current_q_vector = policy_net.predict(states)   # contains list of vectors. each vector(the Q values) is of length equal to number of movies rated by user. 53 for 1st user
+                    future_q_vector = target_net.predict(next_states)
+
+                    max_future_q = np.max(future_q_vector[0])
+                    new_q = reward + gamma * max_future_q       # q-learning update rule
+
+                    current_q_vector[0][action] = new_q         
+                    # current_q_vector[0] gives one 53 dim vector. for that vector update particular q value
+                    # for whatever action (movie id) you take, you updates its q value.
 
 
-            max_future_q = np.max(future_q_vector)
-            new_q = reward + gamma * max_future_q       # q-learning update rule
+                    X.append(state)
+                    y.append(current_q_vector[0])   # append the vector, NOT list(one vector)
 
-            current_q_vector[0, action] = new_q
+                X = np.asarray(X)
+                y = np.asarray(y)
 
-            X = predict_states
-            y = current_q_vector
-
-            policy_net.fit(X, y, verbose=1)
-            if count%10:
-                target_net.fit(X, y, verbose=1)
+                policy_net.fit(X, y, verbose=1)
+            
 
             state = next_state
+
+        if count%10 == 0:
+            target_net.fit(X, y, verbose=1)
 
 
 
