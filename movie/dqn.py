@@ -26,12 +26,12 @@ eps_decay = 0.001
 target_update = 10
 memory_size = 100000
 lr = 0.001
-num_episodes = 1000
+num_episodes = 6040         # number of users = 6040
 
 
 svd_vector_dim = 300       ## vector dim for svd
 state_stack_size = 4       ## this is the no. of consecutive movie vectors used for state 
-output_dim = 53           ## this needs to be changed later???
+output_dim = 2314           ## max number of movies a user has watched
 
 movies_watched = dict()
 
@@ -61,6 +61,10 @@ class Memory():
         batch = random.sample(list(self.memory), batch_size)
         return batch
 
+    def clear(self):
+        self.size = 0
+        self.memory.clear()
+
 
 
 
@@ -68,6 +72,9 @@ def preproc(path):
     ## creates a new column in data_m - title_genre that has a concatenation of title & genre
     data_r = pd.read_csv(path+'ratings.csv')
     data_m = pd.read_csv(path+'movies.csv')
+
+    #print(len(np.unique(data_r['userId'])))
+    
     
     
     data_m['title_genre'] = data_m['title'] + data_m['genre'] #choice b/w doing separately or together
@@ -89,26 +96,43 @@ def create_tfidf_svd(str_list, svd_vector_dim):
     return vectors
 
 
-def create_item_vectors(data_r, vectors):
+def create_item_vectors(data_r, vectors, userId):
     ## this returns a list of movie vectors watched by each user
     ## currently only for 1st user
 
-    item_ids = list(data_r.loc[data_r['userId'] == 0]['itemId']) #selecting first user's item ids
+    item_ids = list(data_r.loc[data_r['userId'] == userId]['itemId']) #selecting first user's item ids
 
-    ratings = list(data_r.loc[data_r['userId'] == 0]['rating']) #selecting first user's ratings
+    ratings = list(data_r.loc[data_r['userId'] == userId]['rating']) #selecting first user's ratings
     
     items = []
+
     
-    for id in item_ids:
-        if np.isnan(ratings[id]):
+    for i in range(len(item_ids)):
+        if np.isnan(ratings[i]):
             pass
 
-        items.append(Item(item_ids[id], vectors[id], ratings[id]))
+        items.append(Item(item_ids[i], vectors[i], ratings[i]))
 
-    return items
+    return items #item objects for each user
+
+def create_item_vectors_all_users(data_r, vectors):
+    items = []
+    max = -1
+    for i in range(num_episodes):   #no. of users
+        if len(create_item_vectors(data_r, vectors, i)) > max:
+            max = len(create_item_vectors(data_r, vectors, i))
+        items.append(create_item_vectors(data_r, vectors, i))
+
+    
+    return items        #len should be 6040
+
+
 
 def create_hash(items):
+    # hash of movies watched/not
     global movies_watched
+
+    movies_watched.clear()        # empty dictionary for each user/episode
     for item in items:
         movies_watched[item.id] = False
 
@@ -125,7 +149,7 @@ def DQN(input_dim, output_dim, action=None):
     model.add(Dense(32, activation='tanh'))
     model.add(Dense(output_dim, activation='softmax'))
 
-    model.compile(loss='mse', optimizer='adam', metrics=['accuracy'])
+    model.compile(loss='mse', optimizer='adam')
     ## action - a
     return model
 
@@ -144,7 +168,7 @@ def get_initial_state(items):
     return state
 
 def select_action(state, policy_net, items):
-    global movies_watched
+    
 
     rate = eps_start    #this needs to be changed; decay needs to be added in!!!
 
@@ -154,17 +178,23 @@ def select_action(state, policy_net, items):
     else:
         action = random.randrange(0, len(items))
 
-    movies_watched[items[action].id] = True     # sets hash table value to True for that particular movie
     return action
 
 
 def get_reward(action, items):
+    global movies_watched
+
     if movies_watched[items[action].id] == True:
         reward = 0                  #reward should be 0 so that movies arent repeated
     else:   
         reward = items[action].rating
+        movies_watched[items[action].id] = True     # sets hash table value to True for that particular movie
+
+
     
     return reward
+
+
 
 def get_state(state, action, items):
     #state = list(state)
@@ -180,27 +210,27 @@ def main():
     path = 'data/'
     data_m, data_r = preproc(path)
     vectors = create_tfidf_svd(data_m['title_genre'], svd_vector_dim) 
-    items = create_item_vectors(data_r, vectors)
-
-    create_hash(items)
+    items = create_item_vectors_all_users(data_r, vectors)
     
     policy_net = DQN(input_dim=state_stack_size*svd_vector_dim, output_dim=output_dim)
     target_net = DQN(input_dim=state_stack_size*svd_vector_dim, output_dim=output_dim)
 
 
     memory = Memory()
-    for episode in range(1):#num_episodes):
-        #reset
-        state = get_initial_state(items)     ## this should get the initial state for each episode
+    for episode in range(num_episodes):
+        memory.clear()                       # reset
+        create_hash(items[episode])
 
-        #timesteps = len(items)
-        timesteps = 53
+        state = get_initial_state(items[episode])     ## this should get the initial state for each episode
+
+        total_reward = 0
+
+        timesteps = len(items[episode])     # timesteps is no. of movies watched by each user
         for count, timestep in enumerate(range(timesteps)):
-            action = select_action(state, policy_net, items)    #action is a number, indicating which movie id is selected
-            reward = get_reward(action, items)
-            next_state = get_state(state, action, items)       # passing old state
+            action = select_action(state, policy_net, items[episode])    #action is a number, indicating which movie id is selected
+            reward = get_reward(action, items[episode])
+            next_state = get_state(state, action, items[episode])       # passing old state
             memory.push((state, action, next_state, reward))
-
             
             
             X = []
@@ -210,6 +240,8 @@ def main():
 
                 for i, _ in enumerate(batch):
                     state, action, next_state, reward = batch[i]
+                    total_reward += reward
+                    print(action, reward)
 
                     states = np.asarray([state])                # for syntax purposes (of fit method)
                     next_states = np.asarray([next_state])
@@ -220,8 +252,9 @@ def main():
                     max_future_q = np.max(future_q_vector[0])
                     new_q = reward + gamma * max_future_q       # q-learning update rule
 
-                    current_q_vector[0][action] = new_q         
-                    # current_q_vector[0] gives one 53 dim vector. for that vector update particular q value
+                    current_q_vector[0][action] = new_q   
+                    # because list of one vector      
+                    # for that vector update particular q value
                     # for whatever action (movie id) you take, you updates its q value.
 
 
@@ -238,6 +271,8 @@ def main():
 
         if count%10 == 0:
             target_net.fit(X, y, verbose=1)
+
+        print(total_reward)
 
 
 
