@@ -241,7 +241,7 @@ def main():
                 for i, _ in enumerate(batch):
                     state, action, next_state, reward = batch[i]
                     total_reward += reward
-                    print(action, reward)
+                    #print(action, reward)
 
                     states = np.asarray([state])                # for syntax purposes (of fit method)
                     next_states = np.asarray([next_state])
