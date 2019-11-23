@@ -4,8 +4,10 @@ import pickle
 import math
 import random
 import collections 
+import argparse
 from time import time
 from tqdm import tqdm
+
 
 from nltk.corpus import stopwords
 from sklearn.decomposition import TruncatedSVD
@@ -23,7 +25,7 @@ import tensorflow as tf
 from tensorflow.python.keras.callbacks import TensorBoard
 
 
-batch_size = 10
+batch_size = 40 #before was 10
 gamma = 0.999
 
 eps_start = 1
@@ -33,7 +35,7 @@ eps_decay = 0.001
 target_update = 10
 memory_size = 100000
 lr = 0.001
-num_episodes = 100        # number of users = 6040
+num_episodes = 6040        # number of users = 6040
 
 
 svd_vector_dim = 300       ## vector dim for svd
@@ -73,6 +75,22 @@ class Memory():
         self.memory.clear()
 
 
+
+def add_arguments():
+    global batch_size, gamma, num_episodes
+
+    parser = argparse.ArgumentParser(description='input hyperparams')
+
+    parser.add_argument('-b', '--batch_size', type=int, help='Batch size of Experience Replay memory', default=batch_size)
+    parser.add_argument('-g', '--gamma', type=int, help='gamma value; default is 0.999', default=gamma)
+    parser.add_argument('-ne', '--num_episodes', type=int, help='No. of episodes(or users) to train for', default=num_episodes)
+    args = parser.parse_args()
+
+    batch_size = args.batch_size
+    gamma = args.gamma
+    num_episodes = args.num_episodes
+
+    return 1
 
 
 def preproc(path):
@@ -149,9 +167,9 @@ def DQN(input_dim, output_dim, action=None):
     ## creates the DQN model, needs paramater tuning
 
     model = Sequential()
-    model.add(Dense(128, input_dim=input_dim, activation='relu'))
-    model.add(Dense(64, activation='relu'))
-    model.add(Dense(32, activation='tanh'))
+    model.add(Dense(512, input_dim=input_dim, activation='relu'))
+    model.add(Dense(512, activation='relu'))
+    model.add(Dense(512, activation='tanh'))
     model.add(Dense(output_dim, activation='softmax'))
 
     model.compile(loss='mse', optimizer='adam')
@@ -206,9 +224,10 @@ def get_reward(action, items, data_r):
         
         else:
             # going_to_watch
-            print(action, items[action].id)
-            reward = items[action].rating
-            movies_watched[items[action].id] = True     # sets hash table value to True for that particular movie
+            for item in items:
+                if item.id == action:
+                    reward = item.rating
+                    movies_watched[action] = True    # sets hash table value to True for that particular movie
 
 
     
@@ -232,13 +251,17 @@ def get_state(state, action, items, vectors):
 
 
 def main():
+    add_arguments()
+
     path = 'data/'
     data_m, data_r = preproc(path)
     vectors = create_tfidf_svd(data_m['title_genre'], svd_vector_dim) 
     items = create_item_vectors_all_users(data_r, vectors)
 
-        # with open("out_files/items.pickle", "wb") as f:
-        #     pickle.dump(items, f)
+    # with open("out_files/items.pickle", "wb") as f:
+    #     pickle.dump(items, f)
+
+    exit(0)
 
     
     policy_net = DQN(input_dim=state_stack_size*svd_vector_dim, output_dim=output_dim)
@@ -268,7 +291,7 @@ def main():
             if memory.size > batch_size:
                 batch = memory.sample(batch_size)       # list of (s,a,n,r) 
 
-                for i, _ in tqdm(enumerate(batch)):
+                for i, _ in enumerate(batch):
                     state, action, next_state, reward = batch[i]
                     total_reward += reward
                     #print(action, reward)
@@ -303,7 +326,7 @@ def main():
 
             state = next_state
 
-        if count%1 == 0:
+        if count%50 == 0:
             with tf.device('/gpu:0'):
                 target_net.fit(X, y, verbose=0)# callbacks=[tensorboard])
 
