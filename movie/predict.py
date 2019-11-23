@@ -28,7 +28,8 @@ def main():
         q_vector = target_net.predict(states)
         action = np.argmax(q_vector)
 
-        print(np.max(q_vector), end=" ")
+        print(np.max(q_vector), np.min(q_vector))
+
 
         output.append(action)
 

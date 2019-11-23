@@ -19,6 +19,7 @@ from keras.layers import Dense
 from keras import backend as K
 from keras.models import load_model
 
+import tensorflow as tf
 from tensorflow.python.keras.callbacks import TensorBoard
 
 
@@ -293,13 +294,18 @@ def main():
                 X = np.asarray(X)
                 y = np.asarray(y)
 
-                policy_net.fit(X, y, verbose=0)
+                with tf.device('/gpu:0'):
+                    policy_net.fit(X, y, verbose=0)
+
+                with open("out_files/policy_net.pickle", "wb") as f:
+                    pickle.dump(policy_net, f)
             
 
             state = next_state
 
-        if count%10 == 0:
-            target_net.fit(X, y, verbose=0)# callbacks=[tensorboard])
+        if count%1 == 0:
+            with tf.device('/gpu:0'):
+                target_net.fit(X, y, verbose=0)# callbacks=[tensorboard])
 
             with open("out_files/target_net.pickle", "wb") as f:
                 pickle.dump(target_net, f)
