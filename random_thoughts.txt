@@ -7,3 +7,7 @@ rewards - (-1, +1), (0, +1), (-1, 0)
 
 state - could be the set of apps remaining
 	- hence our problem becomes a deterministic one
+
+what we know is that rl has done much better than traditional ml/dl approches in solving games.
+so we wnat to figure out whether framing the recsys process as a game might be helpful in making 
+the recsys better
