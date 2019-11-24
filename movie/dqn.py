@@ -35,7 +35,7 @@ eps_decay = 0.001
 target_update = 10
 memory_size = 100000
 lr = 0.001
-num_episodes = 6040        # number of users = 6040
+num_episodes = 6040       # number of users = 6040
 
 
 svd_vector_dim = 300       ## vector dim for svd
@@ -168,7 +168,7 @@ def DQN(input_dim, output_dim, action=None):
 
     model = Sequential()
     model.add(Dense(512, input_dim=input_dim, activation='relu'))
-    model.add(Dense(512, activation='relu'))
+    model.add(Dense(1024, activation='relu'))
     model.add(Dense(512, activation='tanh'))
     model.add(Dense(output_dim, activation='softmax'))
 
@@ -256,20 +256,22 @@ def main():
     path = 'data/'
     data_m, data_r = preproc(path)
     vectors = create_tfidf_svd(data_m['title_genre'], svd_vector_dim) 
-    items = create_item_vectors_all_users(data_r, vectors)
+    #items = create_item_vectors_all_users(data_r, vectors)
 
     # with open("out_files/items.pickle", "wb") as f:
     #     pickle.dump(items, f)
 
-    exit(0)
+    with open("out_files/items.pickle", "rb") as f:
+        items = pickle.load(f)
 
-    
     policy_net = DQN(input_dim=state_stack_size*svd_vector_dim, output_dim=output_dim)
     target_net = DQN(input_dim=state_stack_size*svd_vector_dim, output_dim=output_dim)
 
     tensorboard = TensorBoard(log_dir="logs/{}".format(time()))
 
     memory = Memory()
+
+
     for episode in tqdm(range(num_episodes)):
         memory.clear()                       # reset
         create_hash(items[episode])
@@ -317,8 +319,7 @@ def main():
                 X = np.asarray(X)
                 y = np.asarray(y)
 
-                with tf.device('/gpu:0'):
-                    policy_net.fit(X, y, verbose=0)
+                policy_net.fit(X, y, verbose=0)
 
                 with open("out_files/policy_net.pickle", "wb") as f:
                     pickle.dump(policy_net, f)
@@ -327,8 +328,7 @@ def main():
             state = next_state
 
         if count%50 == 0:
-            with tf.device('/gpu:0'):
-                target_net.fit(X, y, verbose=0)# callbacks=[tensorboard])
+            target_net.fit(X, y, verbose=0)# callbacks=[tensorboard])
 
             with open("out_files/target_net.pickle", "wb") as f:
                 pickle.dump(target_net, f)
