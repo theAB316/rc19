@@ -25,7 +25,7 @@ import tensorflow as tf
 from tensorflow.python.keras.callbacks import TensorBoard
 
 
-batch_size = 40 #before was 10
+batch_size = 20 #before was 10
 gamma = 0.999
 
 eps_start = 1
