@@ -170,9 +170,11 @@ def create_hash(items):
 
 def DQN(input_dim, output_dim, action=None):
     ## creates the DQN model, needs paramater tuning
+    lstm_out = 100
 
     model = Sequential()
-    model.add(Dense(hl1, input_dim=input_dim, activation='relu'))
+    model.add(LSTM(lstm_out, input_dim=input_dim, dropout_U = 0.2, dropout_W = 0.2))
+    model.add(Dense(hl1, activation='relu'))
     model.add(Dense(hl2, activation='relu'))
     model.add(Dense(hl3, activation='tanh'))
     model.add(Dense(output_dim, activation='softmax'))
@@ -336,7 +338,7 @@ def main():
         if count%50 == 0:
             target_net.fit(X, y, verbose=0)# callbacks=[tensorboard])
 
-            with open("out_files/target_net/" + outfile_path + ".pickle, "wb") as f:
+            with open("out_files/target_net/" + outfile_path + ".pickle", "wb") as f:
                 pickle.dump(target_net, f)
             #target_net.save('out_files/target_net.h5')
 
@@ -366,4 +368,7 @@ def main():
 
 
 if __name__ == '__main__':
+    start_time = time()
     main()
+    end_time = time()
+    print(end_time - start_time)
