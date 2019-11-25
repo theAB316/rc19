@@ -28,6 +28,7 @@ from tensorflow.python.keras.callbacks import TensorBoard
 batch_size = 20 #before was 10
 gamma = 0.999
 
+rate = 0
 eps_start = 1
 eps_end = 0.01
 eps_decay = 0.001
@@ -202,9 +203,10 @@ def get_initial_state(items):
     return state
 
 def select_action(state, policy_net, items, timestep):
+    global rate
     
     #this needs to be changed; decay needs to be added in!!!
-    rate = eps_end + (eps_start - eps_end) * (math.exp(-1 * timestep * eps_decay))
+    rate = eps_start
 
     if random.random() > rate:
         #get action from q table/network
@@ -335,6 +337,8 @@ def main():
 
             state = next_state
 
+        rate = eps_end + (eps_start - eps_end) * (math.exp(-1 * timestep * eps_decay))
+
         if count%50 == 0:
             target_net.fit(X, y, verbose=0)# callbacks=[tensorboard])
 
@@ -343,8 +347,6 @@ def main():
             #target_net.save('out_files/target_net.h5')
 
         print(total_reward)
-
-
 
 
     # s = []
