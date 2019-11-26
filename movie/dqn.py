@@ -17,7 +17,7 @@ from sklearn.preprocessing import LabelEncoder
 from sklearn.preprocessing import normalize
 
 from keras.models import Sequential
-from keras.layers import Dense
+from keras.layers import Dense, LSTM
 from keras import backend as K
 from keras.models import load_model
 
@@ -35,7 +35,7 @@ eps_decay = 0.001
 
 target_update = 10
 memory_size = 100000
-lr = 0.001
+lr = 0.01                # 0.001
 num_episodes = 6040       # number of users = 6040
 
 
@@ -49,6 +49,7 @@ hl3 = 512
 
 
 movies_watched = dict()
+movies_list = []
 
 class Item():
     ## item object is 3-tuple
@@ -56,6 +57,15 @@ class Item():
         self.id = id
         self.vector = vector
         self.rating = rating
+
+class Movie():
+    def __init__(self, id, name, genre):
+        self.id = id
+        self.name = name
+        self.genre = genre
+    def get_attrs(self):
+        return str(self.id) + ' ' + str(self.name) + ' ' + str(self.genre)
+        
 
 class Memory():
     def __init__(self):
@@ -104,12 +114,15 @@ def preproc(path):
     data_r = pd.read_csv(path+'ratings.csv')
     data_m = pd.read_csv(path+'movies.csv')
 
-    #print(len(np.unique(data_r['userId'])))
-    
-    
+    global movies_list
+    for i in data_m.index:
+        movies_list.append(Movie(data_m['itemId'][i], data_m['title'][i], data_m['genre'][i]))
+
+    #print(len(np.unique(data_r['userId'])))    
     
     data_m['title_genre'] = data_m['title'] + data_m['genre'] #choice b/w doing separately or together
     data_m.drop([ 'origin_iid', 'title', 'genre'], axis='columns', inplace=True)
+
     
     return data_m, data_r
 
@@ -174,8 +187,8 @@ def DQN(input_dim, output_dim, action=None):
     lstm_out = 100
 
     model = Sequential()
-    model.add(LSTM(lstm_out, input_dim=input_dim, dropout_U = 0.2, dropout_W = 0.2))
-    model.add(Dense(hl1, activation='relu'))
+    #model.add(LSTM(lstm_out, input_dim=input_dim, dropout_U = 0.2, dropout_W = 0.2))
+    model.add(Dense(hl1, input_dim=input_dim, activation='relu'))
     model.add(Dense(hl2, activation='relu'))
     model.add(Dense(hl3, activation='tanh'))
     model.add(Dense(output_dim, activation='softmax'))
@@ -265,6 +278,8 @@ def main():
     outfile_path = str(hl1)+"_"+str(hl2)+"_"+str(hl3)+"_"+str(num_episodes)
     path = 'data/'
     data_m, data_r = preproc(path)
+    
+
     vectors = create_tfidf_svd(data_m['title_genre'], svd_vector_dim) 
     #items = create_item_vectors_all_users(data_r, vectors)
 
@@ -339,7 +354,7 @@ def main():
 
         rate = eps_end + (eps_start - eps_end) * (math.exp(-1 * timestep * eps_decay))
 
-        if count%50 == 0:
+        if count%30 == 0:
             target_net.fit(X, y, verbose=0)# callbacks=[tensorboard])
 
             with open("out_files/target_net/" + outfile_path + ".pickle", "wb") as f:
