@@ -55,7 +55,7 @@ def avg_rating_movies(path):
 def find_precision(ratings):
     relevent = not_relevant = 0
     for r in ratings:
-        if r>3:
+        if r>3.3:
             relevent += 1
         else:
             not_relevant += 1
@@ -68,8 +68,13 @@ def find_precision(ratings):
 
 def main():
     path = 'data/'
-    data = avg_rating_movies(path) # returns df of mean ratings
+    # data = avg_rating_movies(path) # returns df of mean ratings
 
+    # with open("out_files/user_item_pair.pickle", "wb") as f:
+    #     pickle.dump(data, f)
+
+    with open("out_files/user_item_pair.pickle", "rb") as f:
+        data = pickle.load(f)    
 
     with open("out_files/items.pickle", "rb") as f:
         items = pickle.load(f)
@@ -81,7 +86,7 @@ def main():
 
     #target_net = load_model('out_files/target_net.h5')   
 
-    random_users_id = random.sample(range(100, 6040), 30)
+    random_users_id = random.sample(range(100, 6040), 100)
         
     output = []
     ratings = []
