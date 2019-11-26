@@ -45,29 +45,46 @@ def avg_rating_movies(path):
     
     data = data.transpose()
     data['mean'] = data.mean(axis=1, skipna=True)
-    print(data.sample(10))
+    #print(data[12][783])
+    #print(np.isnan(data[12][783]))
+    #print(data.sample(10))
+
+    return data
+
+
+def find_precision(ratings):
+    relevent = not_relevant = 0
+    for r in ratings:
+        if r>3:
+            relevent += 1
+        else:
+            not_relevant += 1
+
+    p = relevent/len(ratings) # p%n
+    
+    return p
 
 
 
 def main():
     path = 'data/'
-    avg_rating_movies(path)
+    data = avg_rating_movies(path) # returns df of mean ratings
 
-    exit(0)
 
     with open("out_files/items.pickle", "rb") as f:
         items = pickle.load(f)
 
-    with open("out_files/target_net.pickle", "rb") as f:
+    with open("out_files/target_net/512_1024_512_100.pickle", "rb") as f:
         target_net = pickle.load(f)
 
 
 
     #target_net = load_model('out_files/target_net.h5')   
 
-    random_users_id = random.sample(range(100, 6040), 20)
+    random_users_id = random.sample(range(100, 6040), 30)
         
     output = []
+    ratings = []
     for user in random_users_id:
         state = get_initial_state(items[user])
 
@@ -75,12 +92,23 @@ def main():
         q_vector = target_net.predict(states)
         action = np.argmax(q_vector)
 
-        print(np.max(q_vector), np.min(q_vector))
+        rating = data[user][action]
+        if np.isnan(rating):
+            rating = data['mean'][action]
+
+        ratings.append(rating)
+
+        #print(np.max(q_vector), np.min(q_vector))
 
 
         output.append(action)
 
     print("\n\n\n", output)
+    print("\n\n\n", ratings)
+
+
+    precision = find_precision(ratings)
+    print(precision)
 
 
 
