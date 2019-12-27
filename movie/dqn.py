@@ -17,7 +17,7 @@ from sklearn.preprocessing import LabelEncoder
 from sklearn.preprocessing import normalize
 
 from keras.models import Sequential
-from keras.layers import Dense, LSTM
+from keras.layers import Dense, LSTM, CuDNNLSTM, Dropout, Reshape
 from keras import backend as K
 from keras.models import load_model
 
@@ -35,7 +35,7 @@ eps_decay = 0.001
 
 target_update = 10
 memory_size = 100000
-lr = 0.01                # 0.001
+lr = 0.001                # 0.001
 num_episodes = 6040       # number of users = 6040
 
 
@@ -44,8 +44,8 @@ state_stack_size = 4       ## this is the no. of consecutive movie vectors used 
 output_dim = 2314           ## max number of movies a user has watched
 
 hl1 = 512
-hl2 = 1024
-hl3 = 512
+hl2 = 0 #1024
+hl3 = 0 #512
 
 
 movies_watched = dict()
@@ -184,16 +184,27 @@ def create_hash(items):
 
 def DQN(input_dim, output_dim, action=None):
     ## creates the DQN model, needs paramater tuning
-    lstm_out = 100
+    lstm1 = 128
 
     model = Sequential()
-    #model.add(LSTM(lstm_out, input_dim=input_dim, dropout_U = 0.2, dropout_W = 0.2))
-    model.add(Dense(hl1, input_dim=input_dim, activation='relu'))
-    model.add(Dense(hl2, activation='relu'))
-    model.add(Dense(hl3, activation='tanh'))
+    model.add(Reshape((state_stack_size, svd_vector_dim), input_shape=(input_dim, )))
+
+    model.add(CuDNNLSTM(lstm1))
+    model.add(Dropout(0.2))
+
+    #model.add(Dense(hl1, input_dim=input_dim, activation='relu'))
+    model.add(Dense(hl1, activation='relu'))
+    model.add(Dropout(0.2))
+
+    # model.add(Dense(hl2, activation='relu'))
+    # model.add(Dropout(0.2))
+
+    # model.add(Dense(hl3, activation='tanh'))
+    # model.add(Dropout(0.2))
+
     model.add(Dense(output_dim, activation='softmax'))
 
-    model.compile(loss='mse', optimizer='adam')
+    model.compile(loss='mse', optimizer='adam', metrics=['accuracy'])
     ## action - a
     return model
 
@@ -268,6 +279,24 @@ def get_state(state, action, items, vectors):
         state.extend(items[action].vector)
 
     return state
+
+
+# def reshape_for_lstm(X, y):
+#     # before:
+#     #  <------1200----->    
+#     # [[2, 2, 3, ..., 3]    |
+#     #  [2, 6, 5, ..., 4]    | n_batch
+#     #  [2, 7, 4, ..., 3]]   |
+
+#     # after
+
+#     print(X.shape)
+#     X = X.reshape(None, state_stack_size, svd_vector_dim)
+#     print(X.shape)
+
+#     exit(0)
+
+#     return X, y
 
     
 
@@ -344,7 +373,7 @@ def main():
                 X = np.asarray(X)
                 y = np.asarray(y)
 
-                policy_net.fit(X, y, verbose=0)
+                policy_net.fit(X, y, verbose=1)
 
                 with open("out_files/policy_net/" + outfile_path + ".pickle", "wb") as f:
                     pickle.dump(policy_net, f)
@@ -352,14 +381,16 @@ def main():
 
             state = next_state
 
-        rate = eps_end + (eps_start - eps_end) * (math.exp(-1 * timestep * eps_decay))
+            # after each step do a decay
+            rate = eps_end + (eps_start - eps_end) * (math.exp(-1 * timestep * eps_decay))
 
-        if count%30 == 0:
-            target_net.fit(X, y, verbose=0)# callbacks=[tensorboard])
+            #after every 30 steps, update target net
+            if count%30 == 0:
+                target_net.set_weights(policy_net.get_weights())# callbacks=[tensorboard])
 
-            with open("out_files/target_net/" + outfile_path + ".pickle", "wb") as f:
-                pickle.dump(target_net, f)
-            #target_net.save('out_files/target_net.h5')
+                with open("out_files/target_net/" + outfile_path + ".pickle", "wb") as f:
+                    pickle.dump(target_net, f)
+                #target_net.save('out_files/target_net.h5')
 
         print(total_reward)
 

@@ -86,7 +86,7 @@ def main():
 
     #target_net = load_model('out_files/target_net.h5')   
 
-    random_users_id = random.sample(range(100, 6040), 100)
+    random_users_id = random.sample(range(100, 6040), 10)
         
     output = []
     ratings = []
@@ -103,17 +103,17 @@ def main():
 
         ratings.append(rating)
 
-        #print(np.max(q_vector), np.min(q_vector))
+        print(np.max(q_vector), np.min(q_vector))
 
 
         output.append(action)
 
-    print("\n\n\n", output)
-    print("\n\n\n", ratings)
+    print("\n\n\nThese are the recommended movies ", output)
+    print("\n\n\nThese are the ratings for those movies ", ratings)
 
 
     precision = find_precision(ratings)
-    print(precision)
+    print("The precision is ", precision)
 
 
 
