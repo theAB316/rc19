@@ -248,7 +248,8 @@ def get_reward(action, items, data_r):
     global movies_watched
 
     if (action in movies_watched) and (movies_watched[action] == True): # already_watched case
-        reward = 0                  #reward should be 0 so that movies arent repeated
+        #reward = 0                  #reward should be 0 so that movies arent repeated
+        reward = 3      #lets try out this and see
     else:
         if(action not in movies_watched):
             # reward is the avg ratings for the movie by all users

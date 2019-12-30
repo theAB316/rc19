@@ -5,6 +5,24 @@ import random
 import numpy as np
 import pickle
 import pandas as pd
+import argparse
+
+model_name = "512_1024_512_100"
+n_random_users = 10
+
+def add_arguments():
+    global model_name, n_random_users
+
+    parser = argparse.ArgumentParser(description='input model name')
+
+    parser.add_argument('-mn', '--model_name', type=str, help='Name of the pickled model file', default=model_name)
+    parser.add_argument('-nru', '--n_random_users', type=str, help='No. of random users to sample', default=n_random_users)
+    args = parser.parse_args()
+
+    model_name = args.model_name
+    n_random_users = args.n_random_users
+
+    return 1
 
 #from keras.models import load_model
 def mergeDatasets(path):    #takes the path and returns a merged dataset
@@ -67,6 +85,8 @@ def find_precision(ratings):
 
 
 def main():
+    add_arguments()
+
     path = 'data/'
     # data = avg_rating_movies(path) # returns df of mean ratings
 
@@ -79,14 +99,14 @@ def main():
     with open("out_files/items.pickle", "rb") as f:
         items = pickle.load(f)
 
-    with open("out_files/target_net/512_1024_512_100.pickle", "rb") as f:
+    with open("out_files/target_net/" + model_name + ".pickle", "rb") as f:
         target_net = pickle.load(f)
 
 
 
     #target_net = load_model('out_files/target_net.h5')   
 
-    random_users_id = random.sample(range(100, 6040), 10)
+    random_users_id = random.sample(range(100, 6040), n_random_users) # this gives n random users' IDs
         
     output = []
     ratings = []
